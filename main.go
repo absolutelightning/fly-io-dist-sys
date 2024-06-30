@@ -45,7 +45,7 @@ func main() {
 	})
 
 	// Single-Node Broadcast
-	messagesNode := make(map[string][]float64)
+	messagesNode := make([]float64, 0)
 	n.Handle("broadcast", func(msg maelstrom.Message) error {
 		var body map[string]any
 		if err := json.Unmarshal(msg.Body, &body); err != nil {
@@ -55,14 +55,7 @@ func main() {
 		// Update the message type to return back.
 		body["type"] = "broadcast_ok"
 
-		topology := n.NodeIDs()
-		for _, id := range topology {
-			_, ok := messagesNode[id]
-			if !ok {
-				messagesNode[id] = make([]float64, 0)
-			}
-			messagesNode[id] = append(messagesNode[id], body["message"].(float64))
-		}
+		messagesNode = append(messagesNode, body["message"].(float64))
 
 		delete(body, "message")
 		return n.Reply(msg, body)
@@ -76,7 +69,7 @@ func main() {
 
 		// Update the message type to return back.
 		body["type"] = "read_ok"
-		body["messages"] = messagesNode[n.ID()]
+		body["messages"] = messagesNode
 
 		return n.Reply(msg, body)
 	})
