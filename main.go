@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	maelstrom "github.com/jepsen-io/maelstrom/demo/go"
 	"log"
+	"strconv"
 	"sync/atomic"
 	"time"
 )
@@ -27,15 +28,9 @@ func main() {
 	})
 
 	// Unique ID Generation
-	nodeCounterMap := make(map[string]int64)
+	counter := int64(1)
 	n.Handle("generate", func(msg maelstrom.Message) error {
-		counter := int64(1)
-		val, ok := nodeCounterMap[n.ID()]
-		if ok {
-			counter = val
-		}
 		atomic.AddInt64(&counter, 1)
-		nodeCounterMap[n.ID()] = counter
 		var body map[string]any
 		if err := json.Unmarshal(msg.Body, &body); err != nil {
 			return err
@@ -44,12 +39,8 @@ func main() {
 		// Update the message type to return back.
 		body["type"] = "generate_ok"
 
-		intNodeId := 0
-		for _, ch := range n.ID() {
-			intNodeId += int(ch)
-		}
+		body["id"] = n.ID() + strconv.FormatInt(counter, 10) + strconv.FormatInt(time.Now().UnixNano(), 10)
 
-		body["id"] = int64(intNodeId) + counter + time.Now().UnixNano()
 		return n.Reply(msg, body)
 	})
 	if err := n.Run(); err != nil {
